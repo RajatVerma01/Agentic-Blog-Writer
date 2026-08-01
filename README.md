@@ -1,10 +1,13 @@
-Agentic Blog Writer — Complete Production-Ready Implementation Plan
-Project Overview
-A multi-agent blog writing system where users provide a topic and four specialized AI agents collaborate to produce a high-quality, fact-checked blog post. Built with LangGraph (stateful agent orchestration), LangChain (LLM abstraction + tools), FastAPI (backend), and a modern HTML/CSS/JS frontend. All resources are 100% free-tier compatible.
+# 🤖 Agentic Blog Writer
+### Complete Production-Ready Implementation
 
+> A multi-agent blog writing system where users provide a topic and four specialized AI agents collaborate to produce a high-quality, fact-checked blog post. Built with **LangGraph** (stateful agent orchestration), **LangChain** (LLM abstraction + tools), **FastAPI** (backend), and a modern HTML/CSS/JS frontend. All resources are **100% free-tier compatible**.
 
-System Architecture — How It Works
+---
 
+## 🏗️ System Architecture — How It Works
+
+```
 User Input (Topic)
        │
        ▼
@@ -27,16 +30,24 @@ User Input (Topic)
        │
        ▼
    Final Blog Post (returned to User)
+```
 
+---
 
-Agent Responsibilities
-Agent	Role	Tools Used
-Researcher	Web search, fact gathering, source collection	Tavily Search API (free), Wikipedia
-Planner	Outline creation, section structure, SEO keyword planning	LLM reasoning
-Writer	Draft blog content following the plan, citing sources	LLM + context from planner
-Evaluator	Check grammar, factual accuracy, citations, readability	LLM + Guardrails
-📁 Folder Structure — Backend (Detailed Explanation)
+## 🤝 Agent Responsibilities
 
+| Agent | Role | Tools Used |
+|---|---|---|
+| **Researcher** | Web search, fact gathering, source collection | Tavily Search API (free), Wikipedia |
+| **Planner** | Outline creation, section structure, SEO keyword planning | LLM reasoning |
+| **Writer** | Draft blog content following the plan, citing sources | LLM + context from planner |
+| **Evaluator** | Check grammar, factual accuracy, citations, readability | LLM + Guardrails |
+
+---
+
+## 📁 Folder Structure — Backend
+
+```
 backend/
 │
 ├── app/                          # Main application package
@@ -151,3 +162,4 @@ backend/
 ├── Dockerfile                    # Docker container definition for deployment
 ├── docker-compose.yml            # Multi-service orchestration (app + optional redis)
 └── README.md                     # Developer onboarding + deployment guide
+```
