@@ -1,7 +1,12 @@
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
+from app.config.settings import get_settings as _get_settings
+
+_settings = _get_settings()
+APPROVAL_THRESHOLD: float = _settings.EVALUATION_THRESHOLD
+MAX_REVISION_CYCLES: int = _settings.MAX_REVISION_CYCLES
 
 
 
@@ -25,8 +30,7 @@ RUBRIC_WEIGHTS: dict[RubricDimension, float] = {
     RubricDimension.SEO_OPTIMIZATION: 0.15,
 }
 
-APPROVAL_THRESHOLD: float = 7.0  
-MAX_REVISION_CYCLES: int  = 3    
+
 
 
 class ImprovementPoint(BaseModel):
@@ -285,11 +289,12 @@ class EvaluationResult(BaseModel):
             "Dimension Scores:",
         ]
 
+        weakest = self.weakest_dimension  # compute once, not on every iteration
         for dim_score in sorted(
             self.dimension_scores, key=lambda s: s.score
         ):
             weight_pct = int(RUBRIC_WEIGHTS[dim_score.dimension] * 100)
-            marker = " ← WEAKEST" if dim_score == self.weakest_dimension else ""
+            marker = " ← WEAKEST" if dim_score == weakest else ""
             lines.append(
                 f"  {dim_score.dimension.value:<22} {dim_score.score:>4.1f}  "
                 f"(weight: {weight_pct}%){marker}"

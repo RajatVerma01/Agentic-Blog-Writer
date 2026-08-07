@@ -4,50 +4,39 @@ from urllib.parse import urlparse
 
 
 
+
+def _strip_markdown(text: str) -> str:
+    """
+    Strips Markdown syntax from text for plain-text analysis.
+    Used by count_words() and flesch_reading_ease() — extracted here
+    to avoid duplicating the same 5 regex substitutions in both functions.
+    """
+    clean = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    clean = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean)
+    clean = re.sub(r"`[^`]+`", " ", clean)
+    clean = re.sub(r"```[\s\S]*?```", " ", clean)
+    clean = re.sub(r"(\*{1,2}|_{1,2})([^*_]+)\1", r"\2", clean)
+    clean = re.sub(r"^[-*_]{3,}\s*$", "", clean, flags=re.MULTILINE)
+    clean = re.sub(r"https?://\S+", " ", clean)
+    return clean
+
+
 def count_words(text: str) -> int:
     """
     Counts the number of words in a text string.
 
-    Strips Markdown syntax (headings, bold, italic, links, code blocks)
-    before counting so the count reflects actual content words, not markup.
+    Strips Markdown syntax before counting so the count reflects
+    actual content words, not markup.
 
     Args:
         text: Any string — plain text or Markdown.
 
     Returns:
         Integer word count. Returns 0 for empty/whitespace-only strings.
-
-    Examples:
-        count_words("Hello world")            → 2
-        count_words("# My Blog\n\nHello!")    → 3  (strips "# " markdown)
-        count_words("")                        → 0
-        count_words("  \n\n  ")               → 0
     """
     if not text or not text.strip():
         return 0
-
-    # Remove Markdown headings (#, ##, ###, etc.)
-    clean = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
-
-    # Remove Markdown links: [text](url) → text
-    clean = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean)
-
-    # Remove inline code: `code` → code
-    clean = re.sub(r"`[^`]+`", " ", clean)
-
-    # Remove fenced code blocks: ```...``` → (empty)
-    clean = re.sub(r"```[\s\S]*?```", " ", clean)
-
-    # Remove bold/italic markers: **text**, *text*, __text__, _text_
-    clean = re.sub(r"(\*{1,2}|_{1,2})([^*_]+)\1", r"\2", clean)
-
-    # Remove horizontal rules
-    clean = re.sub(r"^[-*_]{3,}\s*$", "", clean, flags=re.MULTILINE)
-
-    # Remove bare URLs
-    clean = re.sub(r"https?://\S+", " ", clean)
-
-    # Split on whitespace and count non-empty tokens
+    clean = _strip_markdown(text)
     words = [w for w in clean.split() if w.strip()]
     return len(words)
 
@@ -108,6 +97,37 @@ def extract_urls(text: str) -> list[str]:
     return unique
 
 
+def deduplicate_by_url(items: list[dict], url_key: str = "url") -> list[dict]:
+    """
+    Removes duplicate dicts from a list based on the URL field.
+    Preserves first-seen order. Items with empty/missing URL are kept.
+
+    Used by: researcher/tools.py (merge Tavily + Wikipedia results)
+             tools/search.py (merge multi-query results)
+
+    Args:
+        items:   List of dicts, each expected to have a URL field.
+        url_key: The dict key that holds the URL (default: "url").
+
+    Returns:
+        Deduplicated list preserving original order.
+
+    Example:
+        results = [{"url": "https://a.com", ...}, {"url": "https://a.com", ...}]
+        deduplicate_by_url(results)  → [{"url": "https://a.com", ...}]
+    """
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for item in items:
+        url = item.get(url_key, "")
+        if url and url in seen:
+            continue
+        if url:
+            seen.add(url)
+        unique.append(item)
+    return unique
+
+
 def is_valid_url(url: str) -> bool:
     """
     Checks if a string is a syntactically valid URL.
@@ -136,59 +156,34 @@ def flesch_reading_ease(text: str) -> float:
     """
     Calculates the Flesch Reading Ease score for a text.
 
-    Score interpretation:
-        90–100  Very easy    (5th grade level — e.g., comic books)
-        70–90   Easy         (6th grade — e.g., popular fiction)
-        60–70   Standard     (7th–8th grade — e.g., newspaper)
-        50–60   Fairly hard  (some college — e.g., quality blogs) ← target
-        30–50   Difficult    (college — e.g., academic papers)
-        0–30    Very hard    (university graduate — e.g., legal documents)
-
     Target for blog posts: 50–70 (readable but substantive).
-
-    Formula:
-        206.835 - 1.015 × (words/sentences) - 84.6 × (syllables/words)
+    Formula: 206.835 - 1.015 × (words/sentences) - 84.6 × (syllables/words)
 
     Args:
         text: Plain text or Markdown string.
 
     Returns:
-        Flesch score as a float. Returns 0.0 for very short texts.
-
-    Example:
-        score = flesch_reading_ease("AI is transforming medicine.")
-        # → approximately 65.0
+        Flesch score as a float (0.0–100.0). Returns 0.0 for very short texts.
     """
     if not text or not text.strip():
         return 0.0
 
-    # Strip markdown for accurate sentence and word detection
-    clean = re.sub(r"#{1,6}\s+", "", text, flags=re.MULTILINE)
-    clean = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean)
-    clean = re.sub(r"`[^`]+`", " ", clean)
-    clean = re.sub(r"```[\s\S]*?```", " ", clean)
-    clean = re.sub(r"(\*{1,2}|_{1,2})([^*_]+)\1", r"\2", clean)
+    clean = _strip_markdown(text)
 
-    # Count words
     words = [w for w in clean.split() if w.strip()]
     word_count = len(words)
     if word_count == 0:
         return 0.0
 
-    # Count sentences (split on . ! ?)
     sentence_endings = re.findall(r"[.!?]+", clean)
-    sentence_count = max(len(sentence_endings), 1)  # avoid division by zero
+    sentence_count = max(len(sentence_endings), 1)
 
-    # Count syllables using a simple heuristic
     syllable_count = sum(_count_syllables(word) for word in words)
 
-    # Apply Flesch formula
     avg_sentence_length = word_count / sentence_count
     avg_syllables_per_word = syllable_count / word_count
 
     score = 206.835 - (1.015 * avg_sentence_length) - (84.6 * avg_syllables_per_word)
-
-    # Clamp to [0, 100]
     return round(max(0.0, min(100.0, score)), 2)
 
 
@@ -306,7 +301,6 @@ def get_text_stats(text: str) -> dict:
             "reading_ease_score":  58.3
         }
     """
-    words = [w for w in text.split() if w.strip()]
     word_count = count_words(text)
     sentence_count = max(len(re.findall(r"[.!?]+", text)), 1)
 
