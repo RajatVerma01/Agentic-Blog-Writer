@@ -13,6 +13,8 @@ from app.agents.planner.prompts import (
     format_research_for_prompt,
 )
 from app.config.settings import get_settings
+from app.schemas.blog import JobStatusEnum, AgentNameEnum
+from app.storage.job_store import get_job_store
 from app.utils.logger import get_agent_logger
 
 settings = get_settings()
@@ -125,6 +127,13 @@ async def planner_node(state: BlogState) -> dict[str, Any]:
     job_id = state["metadata"]["job_id"]
     logger = get_agent_logger("planner", job_id=job_id)
 
+    try:
+        await get_job_store().update_status(
+            job_id, JobStatusEnum.RUNNING, AgentNameEnum.PLANNER
+        )
+    except Exception:
+        pass
+
     logger.info("Planner agent started", extra={"topic": topic})
 
     # Guard: if researcher failed, error is already in state — propagate
@@ -133,7 +142,7 @@ async def planner_node(state: BlogState) -> dict[str, Any]:
             "Skipping planner — error already in state",
             extra={"error": state["error"]},
         )
-        return {}
+        return {"error": state["error"]}
 
     try:
         research_summary = format_research_for_prompt(state["research_data"])

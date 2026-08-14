@@ -31,7 +31,8 @@ class JobRecord:
     __slots__ = (
         "job_id", "topic", "status", "current_agent",
         "final_blog", "evaluation_summary", "error",
-        "created_at", "completed_at",
+        "created_at", "updated_at", "completed_at",
+        "revision_count",
     )
 
     def __init__(self, job_id: str, topic: str) -> None:
@@ -42,7 +43,9 @@ class JobRecord:
         self.final_blog: Optional[str]         = None
         self.evaluation_summary: Optional[dict]= None
         self.error: Optional[str]              = None
+        self.revision_count: int               = 0
         self.created_at: datetime              = datetime.now(tz=timezone.utc)
+        self.updated_at: datetime              = datetime.now(tz=timezone.utc)
         self.completed_at: Optional[datetime]  = None
 
     def is_expired(self, ttl_hours: int) -> bool:
@@ -56,12 +59,14 @@ class JobRecord:
         Only fields relevant to a status poll — NOT the full blog content.
         """
         return {
-            "job_id":        self.job_id,
-            "status":        self.status.value,
-            "current_agent": self.current_agent.value,
-            "error":         self.error,
-            "created_at":    self.created_at.isoformat(),
-            "completed_at":  self.completed_at.isoformat() if self.completed_at else None,
+            "job_id":         self.job_id,
+            "status":         self.status.value,
+            "current_agent":  self.current_agent.value,
+            "revision_count": self.revision_count,
+            "error":          self.error,
+            "created_at":     self.created_at.isoformat(),
+            "updated_at":     self.updated_at.isoformat(),
+            "completed_at":   self.completed_at.isoformat() if self.completed_at else None,
         }
 
     def to_result_dict(self) -> dict:
@@ -157,6 +162,7 @@ class JobStore:
 
         record.status = status
         record.current_agent = current_agent
+        record.updated_at = datetime.now(tz=timezone.utc)
         logger.info(
             "Job status updated",
             extra={"job_id": job_id, "status": status.value, "agent": current_agent.value},
@@ -186,6 +192,7 @@ class JobStore:
         record.final_blog         = final_blog
         record.evaluation_summary = evaluation_summary
         record.completed_at       = datetime.now(tz=timezone.utc)
+        record.updated_at         = record.completed_at
 
         logger.info("Job completed", extra={"job_id": job_id})
 
@@ -202,10 +209,11 @@ class JobStore:
             if record is None:
                 return
 
-        record.status       = JobStatusEnum.FAILED
+        record.status        = JobStatusEnum.FAILED
         record.current_agent = AgentNameEnum.NONE
-        record.error        = error
-        record.completed_at = datetime.now(tz=timezone.utc)
+        record.error         = error
+        record.completed_at  = datetime.now(tz=timezone.utc)
+        record.updated_at    = record.completed_at
 
         logger.error("Job failed", extra={"job_id": job_id, "error": error})
 

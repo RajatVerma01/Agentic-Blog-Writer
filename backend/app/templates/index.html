@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic Blog Writer — AI-Powered Content Generation</title>
+  <meta name="description" content="Generate high-quality, research-backed blog posts using a multi-agent AI pipeline powered by Groq and LangGraph." />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <!-- marked.js for client-side Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo-badge">
+      <span class="dot"></span>
+      Multi-Agent AI · Powered by Groq
+    </div>
+    <h1>Agentic Blog Writer</h1>
+    <p class="subtitle">
+      Enter a topic. Four AI agents research, plan, write, and
+      evaluate your blog — automatically.
+    </p>
+  </header>
+
+  <!-- ── Input Card ─────────────────────────────────────────────────── -->
+  <section class="input-card" id="input-section">
+    <label for="topic-input">Blog Topic</label>
+    <textarea
+      id="topic-input"
+      placeholder="e.g. The Future of Artificial Intelligence in Healthcare"
+      maxlength="200"
+      spellcheck="true"
+    ></textarea>
+    <div class="char-counter" id="char-counter">0 / 200</div>
+    <button class="btn-generate" id="btn-generate" type="button" disabled>
+      ✦ Generate Blog
+    </button>
+  </section>
+
+  <!-- ── Progress Card ──────────────────────────────────────────────── -->
+  <section class="progress-card" id="progress-card">
+    <div class="progress-header">
+      <h2 id="progress-title">Generating your blog…</h2>
+      <span class="status-badge queued" id="status-badge">Queued</span>
+    </div>
+
+    <div class="agents-track" id="agents-track">
+      <div class="agent-step" id="step-researcher" data-agent="researcher">
+        <div class="step-icon">🔍</div>
+        <span class="step-label">Research</span>
+      </div>
+      <div class="agent-step" id="step-planner" data-agent="planner">
+        <div class="step-icon">📋</div>
+        <span class="step-label">Plan</span>
+      </div>
+      <div class="agent-step" id="step-writer" data-agent="writer">
+        <div class="step-icon">✍️</div>
+        <span class="step-label">Write</span>
+      </div>
+      <div class="agent-step" id="step-evaluator" data-agent="evaluator">
+        <div class="step-icon">⭐</div>
+        <span class="step-label">Evaluate</span>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg" style="display:none;"></div>
+  </section>
+
+  <!-- ── Result Card ────────────────────────────────────────────────── -->
+  <section class="result-card" id="result-card">
+
+    <!-- Evaluation scores -->
+    <div class="eval-strip fade-in" id="eval-strip">
+      <div class="eval-header">
+        <h3>Evaluation Report</h3>
+        <div class="score-badge" id="total-score">— <span>/ 10</span></div>
+      </div>
+      <div class="dim-grid" id="dim-grid"></div>
+    </div>
+
+    <!-- Blog output -->
+    <div class="blog-card fade-in">
+      <div class="blog-toolbar">
+        <span>Blog Post · Markdown</span>
+        <button class="btn-copy" id="btn-copy" type="button">
+          📋 Copy Markdown
+        </button>
+      </div>
+      <div class="blog-content" id="blog-content"></div>
+    </div>
+
+  </section>
+
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

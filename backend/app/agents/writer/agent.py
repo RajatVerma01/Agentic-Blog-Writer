@@ -13,6 +13,8 @@ from app.agents.writer.prompts import (
 )
 from app.agents.planner.prompts import format_research_for_prompt
 from app.config.settings import get_settings
+from app.schemas.blog import JobStatusEnum, AgentNameEnum
+from app.storage.job_store import get_job_store
 from app.utils.logger import get_agent_logger
 
 settings = get_settings()
@@ -28,8 +30,12 @@ _llm = ChatGroq(
 
 
 def _is_first_draft(state: BlogState) -> bool:
-    """Returns True if this is the first draft (no previous evaluation)."""
-    return state["revision_count"] == 0
+    """Returns True if no draft exists yet (first run).
+    Checks state['draft'] content, NOT revision_count — because
+    revision_count stays 0 after the first draft, so checking it
+    would always return True even on revision cycles.
+    """
+    return not state.get("draft", "").strip()
 
 
 def _build_messages(state: BlogState) -> list:
@@ -99,6 +105,13 @@ async def writer_node(state: BlogState) -> dict[str, Any]:
     revision = state["revision_count"]
     logger = get_agent_logger("writer", job_id=job_id)
 
+    try:
+        await get_job_store().update_status(
+            job_id, JobStatusEnum.RUNNING, AgentNameEnum.WRITER
+        )
+    except Exception:
+        pass
+
     mode = "first draft" if _is_first_draft(state) else f"revision {revision}"
     logger.info("Writer agent started", extra={"topic": topic, "mode": mode})
 
@@ -108,7 +121,7 @@ async def writer_node(state: BlogState) -> dict[str, Any]:
             "Skipping writer — error already in state",
             extra={"error": state["error"]},
         )
-        return {}
+        return {"error": state["error"]}
 
     try:
         messages = _build_messages(state)
@@ -129,7 +142,7 @@ async def writer_node(state: BlogState) -> dict[str, Any]:
 
         return {
             "draft": draft,
-            "revision_count": revision + 1 if not _is_first_draft(state) else 0,
+            "revision_count": revision if _is_first_draft(state) else revision + 1,
             "error": None,
         }
 

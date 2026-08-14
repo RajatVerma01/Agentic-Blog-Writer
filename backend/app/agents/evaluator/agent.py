@@ -14,6 +14,8 @@ from app.agents.evaluator.prompts import (
 )
 from app.schemas.evaluation import EvaluationResult, evaluation_to_state_dict
 from app.config.settings import get_settings
+from app.schemas.blog import JobStatusEnum, AgentNameEnum
+from app.storage.job_store import get_job_store
 from app.utils.logger import get_agent_logger
 
 settings = get_settings()
@@ -86,6 +88,13 @@ async def evaluator_node(state: BlogState) -> dict[str, Any]:
     revision_number = state["revision_count"]
     logger = get_agent_logger("evaluator", job_id=job_id)
 
+    try:
+        await get_job_store().update_status(
+            job_id, JobStatusEnum.RUNNING, AgentNameEnum.EVALUATOR
+        )
+    except Exception:
+        pass
+
     logger.info(
         "Evaluator agent started",
         extra={"topic": topic, "revision_number": revision_number},
@@ -97,7 +106,7 @@ async def evaluator_node(state: BlogState) -> dict[str, Any]:
             "Skipping evaluator — error already in state",
             extra={"error": state["error"]},
         )
-        return {}
+        return {"error": state["error"]}
 
     draft = state["draft"]
     if not draft:

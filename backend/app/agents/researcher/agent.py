@@ -32,6 +32,8 @@ from app.agents.researcher.prompts import (
 )
 from app.agents.researcher.tools import gather_all_sources
 from app.config.settings import get_settings
+from app.schemas.blog import JobStatusEnum, AgentNameEnum
+from app.storage.job_store import get_job_store
 from app.utils.logger import get_agent_logger
 
 settings = get_settings()
@@ -166,6 +168,13 @@ async def researcher_node(state: BlogState) -> dict[str, Any]:
     topic = state["topic"]
     job_id = state["metadata"]["job_id"]
     logger = get_agent_logger("researcher", job_id=job_id)
+
+    try:
+        await get_job_store().update_status(
+            job_id, JobStatusEnum.RUNNING, AgentNameEnum.RESEARCHER
+        )
+    except Exception:
+        pass
 
     logger.info("Researcher agent started", extra={"topic": topic})
 

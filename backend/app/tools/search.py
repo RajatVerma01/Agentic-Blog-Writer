@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import Optional
 
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -9,6 +10,10 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 settings = get_settings()
+
+# Ensure TAVILY_API_KEY is in os.environ — TavilySearchResults reads it
+# directly from the environment, not from our settings object.
+os.environ.setdefault("TAVILY_API_KEY", settings.TAVILY_API_KEY)
 
 
 def build_tavily_tool() -> TavilySearchResults:
